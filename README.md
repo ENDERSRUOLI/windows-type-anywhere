@@ -1,60 +1,104 @@
 # Windows Type Anywhere
 
-解决 **WSLg 中的 Linux GUI 程序无法使用 Windows 输入法键入中文** 的问题。这是一个纯 Windows 原生的 WinForms 托盘程序，同样适用于任意虚拟机、远程桌面、VNC 等"只是一个能接受粘贴的前台窗口"的场景。
+[![.NET 10](https://img.shields.io/badge/.NET-10.0--windows-512BD4)](https://dotnet.microsoft.com/download/dotnet/10.0)
+[![Platform](https://img.shields.io/badge/platform-Windows-0078D6)](#运行环境)
+[![Version](https://img.shields.io/badge/version-0.2.0-2ea44f)](CHANGELOG.md)
+[![Status](https://img.shields.io/badge/status-experimental-d97706)](#项目状态)
 
-## 原理
+让 **WSLg 里的 Linux GUI 程序用上 Windows 输入法**。它是一个纯 Windows 原生的 WinForms 托盘工具：在 Windows 原生文本框里用输入法打字，再经剪贴板把文本送进 WSLg、虚拟机或远程桌面窗口。
 
-- Windows 输入法（TSF/IMM32）只挂在 Windows 原生输入上下文上，Linux 的 GTK/Qt 编辑控件拿不到 —— 所以中转文本框必须是 **Windows 原生 TextBox**，不能放进 WSLg，否则只是把问题复制一遍。
-- RDP 键盘通道以扫描码为主，把合成好的中文用 `KEYEVENTF_UNICODE` 当按键注入并不可靠（微软文档明确列出 Qt 应用等不接受字符型键盘输入）。而 Windows ↔ WSLg 之间有 RDP CLIPRDR 文本剪贴板通道。
-- 因此走 **原生文本框 → 剪贴板 → 扫描码 Ctrl+V**。对端是 X11 还是 Wayland 都无关，也天然覆盖各类虚拟机。
+## 目录
+
+- [项目简介](#项目简介)
+- [项目状态](#项目状态)
+- [运行环境](#运行环境)
+- [安装](#安装)
+- [快速开始](#快速开始)
+- [快捷键与托盘菜单](#快捷键与托盘菜单)
+- [两种模式](#两种模式)
+- [配置](#配置)
+- [使用建议](#使用建议)
+- [已知边界](#已知边界)
+- [故障排查](#故障排查)
+- [开发与验证](#开发与验证)
+- [反馈与贡献](#反馈与贡献)
+- [许可证](#许可证)
+
+## 项目简介
+
+WSLg 通过 RDP 展示 Linux GUI 窗口，而 Windows 输入法（TSF/IMM32）只挂在 Windows 原生输入上下文上，GTK/Qt 编辑控件拿不到。把中转文本框做成 WSLg 里的 Linux 窗口，只是把问题复制一遍。
+
+因此本程序在 **Windows 侧**放一个能获得真实焦点的原生 `TextBox` 作为中转框，流程是：
+
+```
+目标窗口处于前台 → 唤起中转框 → 用 Windows 输入法键入 → 提交
+→ 文本进剪贴板 → 焦点切回目标窗口 → 扫描码注入 Ctrl+V → 延迟恢复原剪贴板
+```
+
+- RDP 键盘通道以扫描码为主，把合成好的中文用 `KEYEVENTF_UNICODE` 当按键注入并不可靠（微软文档列出 Qt 应用等不接受字符型键盘输入）；而 Windows ↔ WSLg 之间有 RDP CLIPRDR 文本剪贴板通道。
+- 用剪贴板还有一个好处：对端是 X11 还是 Wayland 都无关，纯 Linux 侧方案在原生 Wayland 上会失效。
 - 目标窗口由 `EVENT_SYSTEM_FOREGROUND` 自动记录，不需要事先手动选定。
+- 全程 **无剪贴板变更监听、无轮询**；前台切换是事件驱动等待。
 
-流程：目标窗口处于前台 → 唤起中转框 → 用 Windows 输入法键入 → 提交 → 文本进剪贴板 → 焦点切回目标窗口 → 注入 Ctrl+V → 延迟恢复原剪贴板。全程 **无剪贴板变更监听、无轮询**。
+**适用**：WSLg GUI 程序、VirtualBox / VMware、远程桌面、VNC 等"只是一个能接受粘贴的前台窗口"的场景。
+**不适用**：Windows 原生程序 —— 它们本来就能直接用输入法，无需中转。
+
+## 项目状态
+
+当前版本 **0.2.0**，实验性工具，交互行为依赖真实桌面实测。版本规则与历次变更见 [CHANGELOG.md](CHANGELOG.md)；版本号写在 `WindowsTypeAnywhere.csproj` 的 `<Version>`，编译后显示在托盘图标提示中。
+
+按维护者约定：**项目实测稳定前不提供预编译包与 GitHub Release**。Git tag 也暂不启用。
 
 ## 运行环境
 
 | 项目 | 要求 |
 | --- | --- |
-| 系统 | Windows 10 21H2+ / Windows 11 |
-| 运行时 | **.NET 10 Desktop Runtime (x64)**，需使用者自行安装 |
+| 系统 | Windows 10 21H2+ / Windows 11（x64） |
+| 运行时 | **.NET 10 Desktop Runtime (x64)**，需自行安装 |
 | 权限 | `asInvoker` 最小权限，不自动提权 |
 | 部署形态 | framework-dependent，非自包含；运行时由 Microsoft Update 打补丁 |
 
 采用非自包含是刻意选择：自包含应用不会随 Microsoft Update 更新运行时，安全补丁要自己重新发布，对长期驻留的托盘程序不划算。
 
-检查运行时是否已装：
+检查运行时：
 
 ```powershell
 dotnet --list-runtimes
 # 应包含 Microsoft.WindowsDesktop.App 10.x.x
 ```
 
-## 构建
+## 安装
 
-需要 .NET 10 SDK：
+### 方式 A：从源码构建（当前唯一方式）
+
+需要 **.NET 10 SDK**：
 
 ```powershell
+git clone https://github.com/ENDERSRUOLI/windows-type-anywhere.git
+cd windows-type-anywhere
 dotnet build -c Release
 ```
 
-产物：`bin/Release/net10.0-windows/WindowsTypeAnywhere.exe`。当前构建为 **0 警告 0 错误**。
+产物在 `bin/Release/net10.0-windows/WindowsTypeAnywhere.exe`，`config.json` 会被复制到同一目录。双击 exe 即可运行，程序没有主窗口，只在系统托盘显示图标。
+
+### 方式 B：发布包
+
+尚未提供预编译 zip 与 GitHub Release，待实测稳定后发布。届时下载解压即可运行 —— 仍是非自包含程序，需要目标机器装有 .NET 10 Desktop Runtime。
 
 ## 快速开始
 
-1. 双击 `WindowsTypeAnywhere.exe`。程序无主窗口，只在系统托盘显示图标（默认 `EnabledOnStart=true`，已启用）。
+1. 双击 `WindowsTypeAnywhere.exe`，托盘图标出现（默认 `EnabledOnStart=true`，已启用）。
 2. 点进 WSLg 应用（或虚拟机）里**需要输入文字的文本框**，让该窗口成为前台窗口 —— 目标就是这么被记录的。
 3. 按 `Ctrl+Shift+Space`，中转框出现在目标窗口所在屏幕的工作区底部并获得焦点。
-4. 切换到 Windows 输入法，在中转框里键入中文。
-5. 按 `Ctrl+Enter` 提交。文本被剪切进剪贴板，焦点切回目标窗口并粘贴；按需模式下中转框自动隐藏。
+4. 切换到 Windows 输入法，在中转框里键入中文；按 `Enter` 可在框内换行。
+5. 按 `Ctrl+Enter` 提交：文本进剪贴板，焦点切回目标窗口并粘贴；按需模式下中转框自动隐藏。
 6. 若粘贴失败或找不到目标窗口，文本会**退回中转框**，不会丢失。
-
-右键托盘图标可操作：状态（启用/禁用）、模式（按需/监听）、显示中转框、重新载入配置、退出。**双击托盘图标**等同于"显示中转框"。改完 `config.json` 后用"重新载入配置"重启程序生效。
 
 ### WSLg / 虚拟机窗口的焦点
 
 WSLg 的 RDP 客户端偶尔会在焦点切走后异步把前台抢回去，表现为「中转框已弹出却键不进去」。程序会在唤起 80ms 后复核前台窗口，必要时再切一次焦点；若仍不生效，再按一次 `Ctrl+Shift+Space`（或托盘双击）即可，不需要重新选取目标文本框。
 
-### 默认快捷键
+## 快捷键与托盘菜单
 
 | 快捷键 | 作用 |
 | --- | --- |
@@ -62,14 +106,34 @@ WSLg 的 RDP 客户端偶尔会在焦点切走后异步把前台抢回去，表�
 | `Ctrl+Enter` | 提交文本并粘贴到目标窗口 |
 | `Ctrl+Shift+F12` | 启用 / 禁用（禁用会卸载键盘钩子并隐藏中转框） |
 | `Esc` | 在中转框内按下时隐藏窗口 |
-| `Ctrl+V` | 注入到目标窗口的粘贴键（可配置，非本程序快捷键） |
+| `Ctrl+V` | 注入到目标窗口的粘贴键（可配置，不是本程序快捷键） |
 
 默认用 `Ctrl+Enter` 而非裸 `Enter`：中文 IME 组合态下按 Enter 是"上屏候选"，会被输入法吃掉，到不了消息循环。
 
-### 两种模式
+**托盘菜单**：状态（启用/禁用）、模式（按需/监听）、显示中转框、**编辑配置**、**重新载入配置**、退出。双击托盘图标等同于「显示中转框」，把鼠标停在图标上可看到版本号。
 
-- **OnDemand（默认）**：只有按唤起热键才弹出中转框，提交后隐藏。推荐先用这个实测。
-- **Monitoring（实验性）**：启用后常驻低级键盘钩子，在任何键入前把中转框拉回前台，提交后中转框保持显示。在钩子回调里同步切焦点属 best-effort，**可能丢掉第一个键**。可在托盘菜单"模式"切换，或改 `config.json` 的 `Mode`。
+### 自定义快捷键
+
+四个热键都能在 `config.json` 里改：`SummonHotkey`、`CommitHotkey`、`ToggleHotkey`、`PasteHotkey`。最方便的做法是托盘菜单「编辑配置」→ 改完保存 → 「重新载入配置」（会重启程序）。
+
+格式是 `Ctrl` / `Alt` / `Shift` / `Win` 加主键，用 `+` 连接，大小写不敏感；主键名取自 `System.Windows.Forms.Keys` 枚举，如 `F12`、`Enter`、`Space`、`V`、`A`。例如：
+
+```json
+{
+  "SummonHotkey": "Alt+`",
+  "CommitHotkey": "Ctrl+Shift+Enter",
+  "ToggleHotkey": "Ctrl+Alt+T"
+}
+```
+
+**带修饰键**走 `RegisterHotKey`；**无修饰键单键**会按需安装 `WH_KEYBOARD_LL` 并吞掉该键 —— 这会让该键在其它程序中也无法正常使用，所以建议始终用组合键。若热键被占用或写法有误，启动时会弹出托盘气泡提示，程序自动回落到 `Ctrl+Enter`。
+
+## 两种模式
+
+- **OnDemand（默认）**：只有按唤起热键才弹出中转框，提交后隐藏。推荐日常使用。
+- **Monitoring（实验性）**：启用后常驻低级键盘钩子，**只有会写入字符的按键**才把中转框拉回前台；`Enter`、`Backspace`、`Delete`、方向键、功能键以及 `Ctrl` / `Alt` / `Win` 组合留在目标窗口，因此仍可在目标文本框里删除已键入的内容、换行或执行复制粘贴等快捷键。提交后中转框保持显示。
+
+监听模式在钩子回调里同步切焦点属 best-effort，**可能丢掉第一个键**；在托盘菜单「模式」切换，或改 `config.json` 的 `Mode`。
 
 ## 配置
 
@@ -91,44 +155,58 @@ WSLg 的 RDP 客户端偶尔会在焦点切走后异步把前台抢回去，表�
 | `RelayOpacity` | `0.96` | 中转框不透明度（限制在 0.3–1.0） |
 | `RelayWidth` / `RelayHeight` | `560` / `110` | 中转框尺寸（最小 240×70） |
 
-热键格式：`Ctrl` / `Alt` / `Shift` / `Win` 加主键，用 `+` 连接，大小写不敏感；主键名取自 `System.Windows.Forms.Keys` 枚举，如 `F12`、`Enter`、`Space`、`V`、`A`。**带修饰键**走 `RegisterHotKey`；**无修饰键单键**会按需安装 `WH_KEYBOARD_LL` 并吞掉该键 —— 这会让该键在其它程序中也无法正常使用，所以建议始终用组合键。
+## 使用建议
 
-## 已完成的自动化验证
-
-不启动 GUI 的部分已在 Windows / **.NET 10 SDK 10.0.404** 下验证通过：
-
-- `dotnet build -c Release` / `Rebuild`：0 警告 0 错误；`runtimeconfig.json` 指向 `net10.0` + `Microsoft.WindowsDesktop.App 10.0.0`。
-- `AppConfig.Load` 正确读出全部 14 个配置项；配置文件缺失时回落默认值。
-- 4 个默认热键均解析为非零修饰键 + 有效 VK；无修饰键单键 `F12` 走钩子路径；非法按键抛 `FormatException`。
-- P/Invoke 结构体 x64 布局：`RECT=16`、`KBDLLHOOKSTRUCT=24`、`KEYBDINPUT=24`、`MOUSEINPUT=32`、`HARDWAREINPUT=8`、`INPUTUNION=32`、**`INPUT=40`**（与 Win32 一致，`SendInput` 的 `cbSize` 正确）。
-- `MapVirtualKey(VK→VSC)` 对 Ctrl/V/Enter/F12/Space 均返回有效扫描码。
-
-**以下必须在真实桌面人工实测**：隐藏窗口能否收到 `WM_HOTKEY`、焦点往返与 RDP 粘贴是否成功、IME 组合态行为、剪贴板恢复时机。
-
-## 实测清单（请按序验证并反馈）
-
-1. 启动后出现托盘图标，右键菜单显示"状态：已启用"。若有"快捷键注册失败"气泡，说明热键被其它程序占用或格式写错。
-2. 打开一个 WSLg GUI 程序，点进可输入文本框，按 `Ctrl+Shift+Space` —— 中转框应出现在屏幕底部并获得焦点。
-3. 切到中文输入法键入一段中文（含候选词上屏），按 `Ctrl+Enter` —— 文本应出现在目标文本框，中转框隐藏。
-4. 约 1.5 秒后检查剪贴板是否已恢复成传输前的内容。
-5. 单独验证 `Esc` 取消、托盘双击、启用/禁用切换、`Monitoring` 模式、改 `config.json` 后"重新载入配置"。
-6. 重点反馈：是否丢第一个键、目标窗口失焦后插入符是否保留、热键是否被占用、更高完整性级别（管理员运行的）目标窗口是否注入失败。
+- Windows 原生窗口直接用输入法即可，本工具是给 WSLg / 虚拟机准备的，不要多绕一层。
+- 日常优先用**按需模式**；监听模式适合连续长文本输入，但要接受可能丢首键。
+- 长文本先在中转框里编辑完整（含换行）再提交，比分多次提交更稳。
+- 想替换目标文本框里的内容，按标准 Windows 交互先选中再提交粘贴；程序不做"按应用自适应"，也不会发明独有交互逻辑。
+- 热键一律用组合键，避免无修饰键单键在其它程序里被吞掉。
+- 别在密码框使用：这类控件通常禁用粘贴。
+- 若远端粘贴时剪贴板已被恢复，调大 `RestoreClipboardDelayMs` 或把 `RestoreClipboard` 设为 `false`。
+- 目标窗口若以管理员身份运行，先实测是否需要手动"以管理员身份运行"本程序；默认保持最小权限，不主动提权。
+- 改配置后记得「重新载入配置」，否则要重启程序才生效。
 
 ## 已知边界
 
-- 监听模式是实验性的，可能丢第一个键；默认仍是按需模式。提交/粘贴期间会暂停"抢焦点"，避免注入的 `Ctrl+V` 被送回中转框。
-- IME 组合态下按提交键的优先级问题按约定未处理，用 `Ctrl+Enter` 规避。
+- 监听模式是实验性的，可能丢第一个键；提交/粘贴期间会暂停"抢焦点"，避免注入的 `Ctrl+V` 被送回中转框。
+- IME 组合态下按提交键的优先级问题未处理，用 `Ctrl+Enter` 规避。
 - 目标应用失焦后内部插入符是否保留需实测；密码框通常禁用粘贴。
 - 剪贴板恢复延时与远端取数存在竞态，可调 `RestoreClipboardDelayMs` 或关闭 `RestoreClipboard`。
-- UIPI/更高完整性级别窗口未做规避；按最小权限原则，只有实测确有必要时才手动"以管理员身份运行"本程序。
+- UIPI / 更高完整性级别窗口未做规避；只有实测确有必要时才手动提权。
 - 焦点往返是设计固有的：IME 必须挂在真正获得焦点的原生控件上，`WS_EX_NOACTIVATE` 之类"置顶但不抢焦点"的优化会直接让输入法失效。
 
 ## 故障排查
 
 | 现象 | 处理 |
 | --- | --- |
-| 热键无反应 | 看托盘气泡提示；改 `config.json` 换一组组合键后"重新载入配置" |
+| 热键无反应 | 看托盘气泡提示；用「编辑配置」换一组组合键后「重新载入配置」 |
 | 没粘贴进去 | 确认目标窗口提交前曾是前台窗口、托盘状态为已启用、目标控件允许粘贴 |
-| 中转框不显示 | 托盘菜单"显示中转框"，或检查 `RelayOpacity` / `RelayTopMost` |
+| 中转框不显示 | 托盘菜单「显示中转框」，或检查 `RelayOpacity` / `RelayTopMost` |
 | 提示缺少运行时 | 安装 .NET 10 Desktop Runtime (x64) 后重启程序 |
-| 文本丢失 | 设计上失败会退回中转框；若中转框被关闭，托盘双击重新唤出即可看到 |
+| 文本丢失 | 失败时文本会退回中转框；托盘双击重新唤出即可看到 |
+
+## 开发与验证
+
+```powershell
+dotnet build -c Release
+```
+
+当前构建为 **0 警告 0 错误**。不启动 GUI 的部分已验证：
+
+- `AppConfig.Load` 正确读出全部 14 个配置项；配置文件缺失时回落默认值。
+- 4 个默认热键均解析为有效「修饰键 + VK」；无修饰键单键走钩子路径；非法按键抛 `FormatException`。
+- P/Invoke 结构体 x64 布局：`INPUT=40`（与 Win32 一致，`SendInput` 的 `cbSize` 正确）、`INPUTUNION=32`、`KEYBDINPUT=24`、`KBDLLHOOKSTRUCT=24`、`RECT=16`。
+- `MapVirtualKey(VK→VSC)` 对 Ctrl / V / Enter / F12 / Space 均返回有效扫描码。
+
+**仍需真实桌面人工验证**：隐藏窗口接收 `WM_HOTKEY`、焦点往返与 RDP 粘贴、IME 组合态行为、剪贴板恢复时机、监听模式的按键分类是否符合实际输入习惯。
+
+## 反馈与贡献
+
+欢迎通过 [GitHub Issues](https://github.com/ENDERSRUOLI/windows-type-anywhere/issues) 反馈。报告问题时请附：目标程序类型（WSLg / 虚拟机 / Windows 原生）、当前模式、`config.json` 中的热键配置，以及具体按键顺序与现象。
+
+提交改动前请跑 `dotnet build -c Release`；版本号变更同步更新 `CHANGELOG.md` 与 `WindowsTypeAnywhere.csproj`。
+
+## 许可证
+
+尚未指定许可证。如需再分发或商用，请先与维护者确认；建议后续补充 `LICENSE` 文件。

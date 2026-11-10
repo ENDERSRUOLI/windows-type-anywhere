@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Reflection;
 using System.Windows.Forms;
 
 namespace WindowsTypeAnywhere;
@@ -54,10 +56,11 @@ internal sealed class TrayAppContext : ApplicationContext
         Register(summonSpec, Summon);
         Register(toggleSpec, ToggleEnabled);
 
+        string version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.2.0";
         _tray = new NotifyIcon
         {
             Icon = SystemIcons.Application,
-            Text = "Windows Type Anywhere",
+            Text = "Windows Type Anywhere v" + version,
             Visible = true,
             ContextMenuStrip = BuildMenu()
         };
@@ -105,6 +108,21 @@ internal sealed class TrayAppContext : ApplicationContext
         var show = new ToolStripMenuItem("显示中转框");
         show.Click += (s, e) => Summon();
 
+        var edit = new ToolStripMenuItem("编辑配置");
+        edit.Click += (s, e) =>
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo(
+                    Path.Combine(AppContext.BaseDirectory, "config.json"))
+                { UseShellExecute = true });
+            }
+            catch
+            {
+                // 打开失败不影响托盘其它功能
+            }
+        };
+
         var reload = new ToolStripMenuItem("重新载入配置");
         reload.Click += (s, e) => Application.Restart();
 
@@ -117,6 +135,7 @@ internal sealed class TrayAppContext : ApplicationContext
             _modeItem,
             new ToolStripSeparator(),
             show,
+            edit,
             reload,
             new ToolStripSeparator(),
             exit
@@ -192,9 +211,10 @@ internal sealed class TrayAppContext : ApplicationContext
     private bool OnLowLevelKeyDown(uint vk)
     {
         if (!_enabled) return false;
+        uint mods = CurrentModifiers();
 
         // (1) 无修饰键的任意单键：投递到消息队列异步执行，避免在钩子回调里做耗时操作
-        if (CurrentModifiers() == 0)
+        if (mods == 0)
         {
             foreach (var pair in _modifierless)
             {
@@ -207,16 +227,28 @@ internal sealed class TrayAppContext : ApplicationContext
             }
         }
 
-        // (2) 监听模式：在任何键入之前把中转框拉回前台；不吞按键，保留 IME 组合链。
-        //     传输期间必须让位：SendChord 注入的扫描码同样会经过本钩子，
-        //     若此时抢回焦点，Ctrl+V 会被送进中转框而不是目标窗口。
-        if (_monitoring && !_transferring &&
+        // (2) 监听模式：只在「会写入字符」的按键上把中转框拉回前台；不吞按键，保留 IME 组合链。
+        //     Enter / Backspace / Delete / 方向键 / 功能键与 Ctrl|Alt|Win 组合留在目标窗口，
+        //     让用户仍能在目标文本框里删除、换行或执行快捷键；传输期间的注入按键也让位。
+        if (_monitoring && !_transferring && IsTextInputKey(vk) &&
+            (mods & (Native.MOD_CONTROL | Native.MOD_ALT | Native.MOD_WIN)) == 0 &&
             Native.GetForegroundWindow() != _relay.Handle)
         {
             if (!_relay.Visible) _relay.Show();
             ForegroundHelper.ForceForeground(_relay.Handle);
         }
         return false;
+    }
+
+    /// <summary>只有会向文本框写入字符的虚拟键才需要中转框接管。</summary>
+    private static bool IsTextInputKey(uint vk)
+    {
+        if (vk >= 0x41 && vk <= 0x5A) return true;   // A-Z
+        if (vk >= 0x30 && vk <= 0x39) return true;   // 0-9
+        if (vk >= 0x60 && vk <= 0x6F) return true;   // 小键盘数字与运算符
+        if (vk >= 0xBA && vk <= 0xC0) return true;   // ; = , - . / ` 等 OEM 标点
+        if (vk >= 0xDB && vk <= 0xDF) return true;   // [ \ ] ' 等 OEM 标点
+        return vk == 0x20 || vk == 0xE2 || vk == 0xE5;  // 空格、OEM_102、IME 处理键
     }
 
     private static uint CurrentModifiers()
