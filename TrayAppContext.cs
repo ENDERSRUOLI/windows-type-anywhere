@@ -170,7 +170,7 @@ internal sealed class TrayAppContext : ApplicationContext
         }
     }
 
-    private void Summon()
+    private async void Summon()
     {
         if (!_enabled) return;
         IntPtr target = _tracker.LastTarget;   // 必须在 Show 之前取，否则会被自己的窗口覆盖
@@ -178,6 +178,15 @@ internal sealed class TrayAppContext : ApplicationContext
         _relay.Show();
         ForegroundHelper.ForceForeground(_relay.Handle);
         _relay.FocusInput();
+
+        // WSLg/RDP 窗口会在焦点切换后异步抢回前台，首次显示时尤其明显；
+        // 短延迟后复核一次，必要时再切一次，避免中转框可见却收不到键入。
+        await Task.Delay(80);
+        if (Native.GetForegroundWindow() != _relay.Handle)
+        {
+            ForegroundHelper.ForceForeground(_relay.Handle);
+            _relay.FocusInput();
+        }
     }
 
     private bool OnLowLevelKeyDown(uint vk)
@@ -251,9 +260,11 @@ internal sealed class TrayAppContext : ApplicationContext
         }
         finally
         {
-            _transferring = false;
             if (_monitoring)
             {
+                // 注入的粘贴键还在目标窗口消息队列里，稍后再拉回中转框；
+                // 这段时间保持 _transferring，避免 LL 钩子提前抢焦点。
+                await Task.Delay(Math.Max(80, _config.ClipboardDelayMs));
                 ForegroundHelper.ForceForeground(_relay.Handle);
                 _relay.FocusInput();
             }
@@ -261,6 +272,7 @@ internal sealed class TrayAppContext : ApplicationContext
             {
                 _relay.Hide();
             }
+            _transferring = false;
         }
     }
 
