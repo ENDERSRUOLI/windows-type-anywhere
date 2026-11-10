@@ -2,7 +2,7 @@
 
 [![.NET 10](https://img.shields.io/badge/.NET-10.0--windows-512BD4)](https://dotnet.microsoft.com/download/dotnet/10.0)
 [![Platform](https://img.shields.io/badge/platform-Windows-0078D6)](#运行环境)
-[![Version](https://img.shields.io/badge/version-0.2.1-2ea44f)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.2.2-2ea44f)](CHANGELOG.md)
 [![Status](https://img.shields.io/badge/status-experimental-d97706)](#项目状态)
 
 让 **WSLg 里的 Linux GUI 程序用上 Windows 输入法**。它是一个纯 Windows 原生的 WinForms 托盘工具：在 Windows 原生文本框里用输入法打字，再经剪贴板把文本送进 WSLg、虚拟机或远程桌面窗口。
@@ -45,7 +45,7 @@ WSLg 通过 RDP 展示 Linux GUI 窗口，而 Windows 输入法（TSF/IMM32）�
 
 ## 项目状态
 
-当前版本 **0.2.1**，实验性工具，交互行为依赖真实桌面实测。版本规则与历次变更见 [CHANGELOG.md](CHANGELOG.md)；版本号写在 `WindowsTypeAnywhere.csproj` 的 `<Version>`，编译后显示在托盘图标提示中。
+当前版本 **0.2.2**，实验性工具，交互行为依赖真实桌面实测。版本规则与历次变更见 [CHANGELOG.md](CHANGELOG.md)；版本号写在 `WindowsTypeAnywhere.csproj` 的 `<Version>`，编译后显示在托盘图标提示中。
 
 按维护者约定：**项目实测稳定前不提供预编译包与 GitHub Release**。Git tag 也暂不启用。
 
@@ -133,11 +133,15 @@ WSLg 的 RDP 客户端偶尔会在焦点切走后异步把前台抢回去，表�
 - **OnDemand（默认）**：只有按唤起热键才弹出中转框，提交后隐藏。推荐日常使用。
 - **Monitoring（实验性）**：中转框常驻显示；**提交后焦点自动交还目标窗口**，中转框保持可见但不抢焦点，所以不必手动点击目标窗口就能继续在那里编辑。
 
-  默认 `MonitoringAutoFocus=true` 时，只有**字母键**（拼音等 IME 组合的起始键）与 IME 处理键会把中转框拉回前台；数字、符号、空格、小键盘、`Enter` / `Backspace` / `Delete` / 方向键 / 功能键以及 `Ctrl` / `Alt` / `Win` 组合都留在目标窗口，可直接输入键盘上已有的字符、删除、换行或执行复制粘贴等快捷键。触发切换的那个字母会被吞掉，以免污染目标窗口，因此**会丢首键**，需要重按一次。
+  默认 `MonitoringAutoFocus=true` 时，只有**字母键**（拼音等 IME 组合的起始键）与 IME 处理键会把中转框拉回前台；数字、符号（含 `+ - [ ]`）、空格、小键盘、`Enter` / `Backspace` / `Delete` / 方向键 / 功能键以及 `Ctrl` / `Alt` / `Win` 组合都留在目标窗口，可直接输入键盘上已有的字符、删除、换行或执行快捷键。触发切换的那个字母会被吞掉，以免污染目标窗口，因此**会丢首键**，需要重按一次。这些符号键只在"焦点不在中转框"时被排除；焦点已在中转框时仍可正常用于候选翻页等操作。
 
-  **局限**：钩子在按键发生前无法区分"想输入 ASCII 字母"和"想用拼音输入中文"，所以自动聚焦开启时，在目标窗口按字母键仍会切到中转框。若需要频繁输入 ASCII 字母，把 `MonitoringAutoFocus` 设为 `false`，或改用按需模式。
+  **CapsLock 启发式**：大写锁定开启时，主流中文输入法固定输出大写英文、不会进入组合态，此时字母键不再触发自动聚焦，可以直接在目标窗口输入大写 ASCII；关闭大写锁定即恢复中文输入触发。这相当于给用户一个无需改配置的显式切换手段。
+
+  **局限**：钩子在按键发生前仍无法区分"想输入小写 ASCII 字母"和"想用拼音输入中文"，CapsLock 只覆盖大写情形。若需要频繁输入小写英文字母，把 `MonitoringAutoFocus` 设为 `false`，或改用按需模式。
 
   `MonitoringAutoFocus=false` 时监听模式不安装自动聚焦钩子：焦点始终留在目标窗口，需要输入法时按 `Ctrl+Shift+Space`（或托盘双击）显式切到中转框，提交后自动回到目标窗口。这是最不容易产生"劫持感"的用法。
+
+  **适用范围**：上述按键判定以中文拼音输入法为参考模型。其它语言的输入法若需要字母键以外的按键来开始组合，可能需要另定触发规则 —— 请通过 Issue 反馈具体语言与按键，再考虑做成可配置项。
 
 在托盘菜单「模式」切换，或改 `config.json` 的 `Mode`。
 
@@ -166,7 +170,8 @@ WSLg 的 RDP 客户端偶尔会在焦点切走后异步把前台抢回去，表�
 
 - Windows 原生窗口直接用输入法即可，本工具是给 WSLg / 虚拟机准备的，不要多绕一层。
 - 日常优先用**按需模式**；监听模式适合连续中文输入，提交后焦点会自动回目标窗口。
-- 若经常要在目标窗口输入数字、符号或 ASCII 字母，把 `MonitoringAutoFocus` 设为 `false`，用热键显式切换最省心。
+- 需要在目标窗口连续输入大写英文时，开启 `CapsLock` 即可，自动聚焦会自动让路；输入中文前记得关掉。
+- 若经常要在目标窗口输入小写英文字母、数字或符号，把 `MonitoringAutoFocus` 设为 `false`，用热键显式切换最省心。
 - 长文本先在中转框里编辑完整（含换行）再提交，比分多次提交更稳。
 - 想替换目标文本框里的内容，按标准 Windows 交互先选中再提交粘贴；程序不做"按应用自适应"，也不会发明独有交互逻辑。
 - 热键一律用组合键，避免无修饰键单键在其它程序里被吞掉。
@@ -177,7 +182,8 @@ WSLg 的 RDP 客户端偶尔会在焦点切走后异步把前台抢回去，表�
 
 ## 已知边界
 
-- 监听模式是实验性的：`MonitoringAutoFocus=true` 时会丢掉触发焦点切换的字母键，且无法区分 ASCII 字母与拼音输入；关闭该选项可规避。
+- 监听模式是实验性的：`MonitoringAutoFocus=true` 时会丢掉触发焦点切换的字母键，且无法区分小写 ASCII 字母与拼音输入；关闭该选项可规避。
+- 自动聚焦的按键判定以中文拼音输入法为参考模型，未覆盖其它语言输入法的组合起始键。
 - 提交/粘贴期间会暂停"抢焦点"，避免注入的 `Ctrl+V` 被送回中转框。
 - IME 组合态下按提交键的优先级问题未处理，用 `Ctrl+Enter` 规避。
 - 目标应用失焦后内部插入符是否保留需实测；密码框通常禁用粘贴。
@@ -193,6 +199,7 @@ WSLg 的 RDP 客户端偶尔会在焦点切走后异步把前台抢回去，表�
 | 没粘贴进去 | 确认目标窗口提交前曾是前台窗口、托盘状态为已启用、目标控件允许粘贴 |
 | 中转框不显示 | 托盘菜单「显示中转框」，或检查 `RelayOpacity` / `RelayTopMost` |
 | 监听模式下字母键被吞 | 自动聚焦的触发键，会被用来切换焦点；关闭 `MonitoringAutoFocus` 或改用按需模式 |
+| 开启 CapsLock 后按字母键不切中转框 | 预期行为，此时可直接输入大写英文；关闭 CapsLock 即恢复 |
 | 提示缺少运行时 | 安装 .NET 10 Desktop Runtime (x64) 后重启程序 |
 | 文本丢失 | 失败时文本会退回中转框；托盘双击重新唤出即可看到 |
 
@@ -206,7 +213,7 @@ dotnet build -c Release
 
 - `config.json` 的 15 个配置键均能被 `AppConfig.Load` 正确读出；配置文件缺失时回落默认值。
 - 4 个默认热键均解析为有效「修饰键 + VK」；无修饰键单键走钩子路径；非法按键抛 `FormatException`。
-- 监听模式按键分类：字母 `A-Z` 与 IME 处理键为自动聚焦触发键；数字、符号、空格、小键盘、编辑键、功能键与修饰键均排除。
+- 监听模式按键分类：字母 `A-Z` 与 IME 处理键为自动聚焦触发键；数字、符号、空格、小键盘、编辑键、功能键与修饰键均排除；CapsLock 开启时整体不触发。
 - P/Invoke 结构体 x64 布局：`INPUT=40`（与 Win32 一致，`SendInput` 的 `cbSize` 正确）、`INPUTUNION=32`、`KEYBDINPUT=24`、`KBDLLHOOKSTRUCT=24`、`RECT=16`。
 - `MapVirtualKey(VK→VSC)` 对 Ctrl / V / Enter / F12 / Space 均返回有效扫描码。
 
@@ -214,7 +221,7 @@ dotnet build -c Release
 
 ## 反馈与贡献
 
-欢迎通过 [GitHub Issues](https://github.com/ENDERSRUOLI/windows-type-anywhere/issues) 反馈。报告问题时请附：目标程序类型（WSLg / 虚拟机 / Windows 原生）、当前模式、`config.json` 中的 `Mode` / `MonitoringAutoFocus` / 热键配置，以及具体按键顺序与现象。
+欢迎通过 [GitHub Issues](https://github.com/ENDERSRUOLI/windows-type-anywhere/issues) 反馈。报告问题时请附：目标程序类型（WSLg / 虚拟机 / Windows 原生）、当前模式、`CapsLock` 状态、`config.json` 中的 `Mode` / `MonitoringAutoFocus` / 热键配置，以及具体按键顺序与现象。
 
 提交改动前请跑 `dotnet build -c Release`；版本号变更同步更新 `CHANGELOG.md` 与 `WindowsTypeAnywhere.csproj`。
 

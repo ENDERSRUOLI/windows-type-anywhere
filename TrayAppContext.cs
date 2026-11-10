@@ -56,7 +56,7 @@ internal sealed class TrayAppContext : ApplicationContext
         Register(summonSpec, Summon);
         Register(toggleSpec, ToggleEnabled);
 
-        string version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.2.1";
+        string version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.2.2";
         _tray = new NotifyIcon
         {
             Icon = SystemIcons.Application,
@@ -230,11 +230,11 @@ internal sealed class TrayAppContext : ApplicationContext
             }
         }
 
-        // (2) 监听模式自动聚焦：只在 IME 组合的起始键上把中转框拉回前台。
-        //     数字、符号、空格、小键盘、编辑键、功能键与 Ctrl|Alt|Win 组合留在目标窗口，
-        //     让用户能直接在目标文本框里输入键盘上已有的字符、删除、换行或执行快捷键。
+        // (2) 监听模式自动聚焦：只在中文 IME 组合的起始键上把中转框拉回前台。
+        //     CapsLock 开启时输入法固定输出大写英文，不会进入组合态，此时不触发；
+        //     数字、符号、空格、小键盘、编辑键、功能键与 Ctrl|Alt|Win 组合留在目标窗口。
         if (_monitoring && _config.MonitoringAutoFocus && !_transferring &&
-            IsTextInputKey(vk) &&
+            ShouldAutoFocus(vk) &&
             (mods & (Native.MOD_CONTROL | Native.MOD_ALT | Native.MOD_WIN)) == 0 &&
             Native.GetForegroundWindow() != _relay.Handle)
         {
@@ -243,6 +243,16 @@ internal sealed class TrayAppContext : ApplicationContext
             return true;   // 吞掉触发切换的键，避免它被键入到目标窗口
         }
         return false;
+    }
+
+    /// <summary>
+    /// 以中文拼音输入法为参考模型的自动聚焦判定：CapsLock 开启时用户只输入大写英文，
+    /// 不会唤起输入法，因此整个自动聚焦都不触发。其它语言的输入法可能需要另定规则。
+    /// </summary>
+    private static bool ShouldAutoFocus(uint vk)
+    {
+        if (Control.IsKeyLocked(Keys.CapsLock)) return false;
+        return IsTextInputKey(vk);
     }
 
     /// <summary>只有 IME 组合的起始键才需要中转框接管；键盘上已有的字符可直接送进目标窗口。</summary>
