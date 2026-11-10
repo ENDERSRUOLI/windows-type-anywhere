@@ -43,4 +43,7 @@ Desktop.ini
 ## agent相关文件
 AGENTS.md
 
-## 说明：config.json / app.manifest / README.md 属于项目源文件，不忽略。
+## 发布产物（本地打包，不入库）
+[Dd]ist/
+
+## 说明：config.json / app.manifest / README.md / LICENSE 属于项目源文件，不忽略。

@@ -4,6 +4,7 @@
 [![Platform](https://img.shields.io/badge/platform-Windows-0078D6)](#运行环境)
 [![Version](https://img.shields.io/badge/version-0.2.2-2ea44f)](CHANGELOG.md)
 [![Status](https://img.shields.io/badge/status-experimental-d97706)](#项目状态)
+[![License](https://img.shields.io/badge/license-MPL--2.0-brightgreen)](LICENSE)
 
 让 **WSLg 里的 Linux GUI 程序用上 Windows 输入法**。它是一个纯 Windows 原生的 WinForms 托盘工具：在 Windows 原生文本框里用输入法打字，再经剪贴板把文本送进 WSLg、虚拟机或远程桌面窗口。
 
@@ -45,9 +46,9 @@ WSLg 通过 RDP 展示 Linux GUI 窗口，而 Windows 输入法（TSF/IMM32）�
 
 ## 项目状态
 
-当前版本 **0.2.2**，实验性工具，交互行为依赖真实桌面实测。版本规则与历次变更见 [CHANGELOG.md](CHANGELOG.md)；版本号写在 `WindowsTypeAnywhere.csproj` 的 `<Version>`，编译后显示在托盘图标提示中。
+当前版本 **0.2.2**，项目处于**早期阶段**：首个发布版本 `v0.2.2` 标记为 **Pre-release**，不宣称稳定。交互行为依赖真实桌面实测，已知边界见下文与 [Issues](https://github.com/ENDERSRUOLI/windows-type-anywhere/issues)。版本规则与历次变更见 [CHANGELOG.md](CHANGELOG.md)；版本号写在 `WindowsTypeAnywhere.csproj` 的 `<Version>`，编译后显示在托盘图标提示中。
 
-按维护者约定：**项目实测稳定前不提供预编译包与 GitHub Release**。Git tag 也暂不启用。
+本项目采用 MPL-2.0 协议，详见 [LICENSE](LICENSE)。
 
 ## 运行环境
 
@@ -69,7 +70,7 @@ dotnet --list-runtimes
 
 ## 安装
 
-### 方式 A：从源码构建（当前唯一方式）
+### 方式 A：从源码构建
 
 需要 **.NET 10 SDK**：
 
@@ -83,7 +84,7 @@ dotnet build -c Release
 
 ### 方式 B：发布包
 
-尚未提供预编译 zip 与 GitHub Release，待实测稳定后发布。届时下载解压即可运行 —— 仍是非自包含程序，需要目标机器装有 .NET 10 Desktop Runtime。
+首个发布包对应 `v0.2.2`（Pre-release），在 [GitHub Releases](https://github.com/ENDERSRUOLI/windows-type-anywhere/releases) 以 framework-dependent zip 分发。下载解压后双击 exe 即可运行；zip 内**不含运行时**，仍需要目标机器装有 .NET 10 Desktop Runtime。
 
 ## 快速开始
 
@@ -223,8 +224,17 @@ dotnet build -c Release
 
 欢迎通过 [GitHub Issues](https://github.com/ENDERSRUOLI/windows-type-anywhere/issues) 反馈。报告问题时请附：目标程序类型（WSLg / 虚拟机 / Windows 原生）、当前模式、`CapsLock` 状态、`config.json` 中的 `Mode` / `MonitoringAutoFocus` / 热键配置，以及具体按键顺序与现象。
 
-提交改动前请跑 `dotnet build -c Release`；版本号变更同步更新 `CHANGELOG.md` 与 `WindowsTypeAnywhere.csproj`。
+提交改动前请跑 `dotnet build -c Release`；版本号变更同步更新 `CHANGELOG.md` 与 `WindowsTypeAnywhere.csproj`。贡献即表示同意按 MPL-2.0 提供。
 
 ## 许可证
 
-尚未指定许可证。如需再分发或商用，请先与维护者确认；建议后续补充 `LICENSE` 文件。
+本项目采用 **Mozilla Public License 2.0**（[MPL-2.0](LICENSE)，SPDX: `MPL-2.0`），Copyright (c) 2026 ENDERSRUOLI。
+
+MPL-2.0 是**文件级弱 copyleft**：
+
+- 可以自由使用、修改、分发（含商用），并享有贡献者的专利授权。
+- **修改并分发 MPL 覆盖的文件时，这些文件及其修改必须继续以 MPL-2.0 提供源码**，保留版权与许可证声明、标注改动，不得限制接收者对这些文件的权利。
+- 可以把本项目的文件与自己编写的专有文件组合成更大的作品（Larger Work）并按自己选择的条款分发，新增文件无需开源。
+- 义务只在**分发**时触发；私下修改自用无需公开。
+
+C# 源文件头部带有 MPL Exhibit A 声明与 SPDX 标识。`config.json` 等不便加注释的文件由仓库根目录的 `LICENSE` 覆盖 —— MPL Exhibit A 允许这种集中声明方式。
