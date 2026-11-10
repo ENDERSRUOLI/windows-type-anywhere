@@ -56,7 +56,7 @@ internal sealed class TrayAppContext : ApplicationContext
         Register(summonSpec, Summon);
         Register(toggleSpec, ToggleEnabled);
 
-        string version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.2.0";
+        string version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.2.1";
         _tray = new NotifyIcon
         {
             Icon = SystemIcons.Application,
@@ -168,8 +168,8 @@ internal sealed class TrayAppContext : ApplicationContext
     {
         if (_enabled)
         {
-            // 只在真正需要时安装低级键盘钩子：监听模式，或配置了无修饰键的单键热键。
-            if (_monitoring || _modifierless.Count > 0)
+            // 只在真正需要时安装低级键盘钩子：监听模式自动聚焦，或配置了无修饰键的单键热键。
+            if ((_monitoring && _config.MonitoringAutoFocus) || _modifierless.Count > 0)
                 _monitor.Install();
             else
                 _monitor.Uninstall();
@@ -178,8 +178,11 @@ internal sealed class TrayAppContext : ApplicationContext
             {
                 _relay.PlaceNear(_tracker.LastTarget);
                 _relay.Show();
-                ForegroundHelper.ForceForeground(_relay.Handle);
-                _relay.FocusInput();
+                if (_config.MonitoringAutoFocus)
+                {
+                    ForegroundHelper.ForceForeground(_relay.Handle);
+                    _relay.FocusInput();
+                }
             }
         }
         else
@@ -227,28 +230,26 @@ internal sealed class TrayAppContext : ApplicationContext
             }
         }
 
-        // (2) 监听模式：只在「会写入字符」的按键上把中转框拉回前台；不吞按键，保留 IME 组合链。
-        //     Enter / Backspace / Delete / 方向键 / 功能键与 Ctrl|Alt|Win 组合留在目标窗口，
-        //     让用户仍能在目标文本框里删除、换行或执行快捷键；传输期间的注入按键也让位。
-        if (_monitoring && !_transferring && IsTextInputKey(vk) &&
+        // (2) 监听模式自动聚焦：只在 IME 组合的起始键上把中转框拉回前台。
+        //     数字、符号、空格、小键盘、编辑键、功能键与 Ctrl|Alt|Win 组合留在目标窗口，
+        //     让用户能直接在目标文本框里输入键盘上已有的字符、删除、换行或执行快捷键。
+        if (_monitoring && _config.MonitoringAutoFocus && !_transferring &&
+            IsTextInputKey(vk) &&
             (mods & (Native.MOD_CONTROL | Native.MOD_ALT | Native.MOD_WIN)) == 0 &&
             Native.GetForegroundWindow() != _relay.Handle)
         {
             if (!_relay.Visible) _relay.Show();
             ForegroundHelper.ForceForeground(_relay.Handle);
+            return true;   // 吞掉触发切换的键，避免它被键入到目标窗口
         }
         return false;
     }
 
-    /// <summary>只有会向文本框写入字符的虚拟键才需要中转框接管。</summary>
+    /// <summary>只有 IME 组合的起始键才需要中转框接管；键盘上已有的字符可直接送进目标窗口。</summary>
     private static bool IsTextInputKey(uint vk)
     {
-        if (vk >= 0x41 && vk <= 0x5A) return true;   // A-Z
-        if (vk >= 0x30 && vk <= 0x39) return true;   // 0-9
-        if (vk >= 0x60 && vk <= 0x6F) return true;   // 小键盘数字与运算符
-        if (vk >= 0xBA && vk <= 0xC0) return true;   // ; = , - . / ` 等 OEM 标点
-        if (vk >= 0xDB && vk <= 0xDF) return true;   // [ \ ] ' 等 OEM 标点
-        return vk == 0x20 || vk == 0xE2 || vk == 0xE5;  // 空格、OEM_102、IME 处理键
+        if (vk >= 0x41 && vk <= 0x5A) return true;   // A-Z：拼音等输入法依靠字母键开始组合
+        return vk == 0xE5;                           // VK_PROCESSKEY，IME 处理中的按键
     }
 
     private static uint CurrentModifiers()
@@ -294,11 +295,11 @@ internal sealed class TrayAppContext : ApplicationContext
         {
             if (_monitoring)
             {
-                // 注入的粘贴键还在目标窗口消息队列里，稍后再拉回中转框；
+                // 注入的粘贴键还在目标窗口消息队列里，稍后把焦点交还目标窗口；
                 // 这段时间保持 _transferring，避免 LL 钩子提前抢焦点。
                 await Task.Delay(Math.Max(80, _config.ClipboardDelayMs));
-                ForegroundHelper.ForceForeground(_relay.Handle);
-                _relay.FocusInput();
+                if (Native.IsWindow(target))
+                    ForegroundHelper.ForceForeground(target);
             }
             else
             {

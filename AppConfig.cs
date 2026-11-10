@@ -12,6 +12,9 @@ internal sealed class AppConfig
     public string Mode { get; set; } = "OnDemand";
     public bool EnabledOnStart { get; set; } = true;
 
+    /// <summary>监听模式是否在 IME 组合起始键上自动把中转框拉回前台；关闭后由唤起热键显式切换。</summary>
+    public bool MonitoringAutoFocus { get; set; } = true;
+
     /// <summary>任意键或组合键，例如 "F12"、"Ctrl+Enter"、"Ctrl+Shift+Space"。</summary>
     public string SummonHotkey { get; set; } = "Ctrl+Shift+Space";
     public string CommitHotkey { get; set; } = "Ctrl+Enter";

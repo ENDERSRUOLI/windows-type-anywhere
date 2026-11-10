@@ -1,6 +1,7 @@
 {
   "Mode": "OnDemand",
   "EnabledOnStart": true,
+  "MonitoringAutoFocus": true,
   "SummonHotkey": "Ctrl+Shift+Space",
   "CommitHotkey": "Ctrl+Enter",
   "ToggleHotkey": "Ctrl+Shift+F12",
