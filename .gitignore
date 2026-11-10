@@ -40,4 +40,7 @@ ehthumbs.db
 Desktop.ini
 .DS_Store
 
+## agent相关文件
+AGENTS.md
+
 ## 说明：config.json / app.manifest / README.md 属于项目源文件，不忽略。
