@@ -222,9 +222,11 @@ dotnet build -c Release
 
 ## 反馈与贡献
 
-欢迎通过 [GitHub Issues](https://github.com/ENDERSRUOLI/windows-type-anywhere/issues) 反馈。报告问题时请附：目标程序类型（WSLg / 虚拟机 / Windows 原生）、当前模式、`CapsLock` 状态、`config.json` 中的 `Mode` / `MonitoringAutoFocus` / 热键配置，以及具体按键顺序与现象。
+- **问题报告**：请使用 [问题报告模板](.github/ISSUE_TEMPLATE/bug_report.yml)，按字段填写目标窗口类型、模式、`CapsLock` 状态、`config.json` 与按键顺序 —— 多数问题出在焦点切换与按键时序上。
+- **安全问题**：见 [SECURITY.md](SECURITY.md)，请勿用公开 Issue 报告漏洞。
+- **参与开发**：见 [CONTRIBUTING.md](CONTRIBUTING.md)（环境、构建、设计约定、许可要求）；PR 请使用 [PR 模板](.github/pull_request_template.md)。
 
-提交改动前请跑 `dotnet build -c Release`；版本号变更同步更新 `CHANGELOG.md` 与 `WindowsTypeAnywhere.csproj`。贡献即表示同意按 MPL-2.0 提供。
+版本号变更需同步更新 `CHANGELOG.md` 与 `WindowsTypeAnywhere.csproj`。贡献即表示同意按 MPL-2.0 提供。
 
 ## 许可证
 
