@@ -1,6 +1,8 @@
 # 变更记录
 
-本项目采用语义化版本号 `MAJOR.MINOR.PATCH`。版本号写在 `WindowsTypeAnywhere.csproj` 的 `<Version>`，编译后显示在托盘图标提示中。Git tag 与 GitHub Release 待实测稳定后启用。
+**简体中文** | [English](CHANGELOG.en.md)
+
+本项目采用语义化版本号 `MAJOR.MINOR.PATCH`。版本号写在 `WindowsTypeAnywhere.csproj` 的 `<Version>`，编译后显示在托盘图标提示中。首个 Git tag 与 GitHub Release 为 `v0.2.2`（Pre-release）。
 
 ## 0.2.2
 

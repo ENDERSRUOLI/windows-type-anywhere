@@ -1,56 +1,57 @@
-name: 问题报告
-description: 报告中转框、焦点切换或粘贴相关的异常行为
+name: 问题报告 / Bug report
+description: 报告中转框、焦点切换或粘贴相关的异常行为 / Report relay, focus or paste issues
 title: "[Bug] "
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        感谢反馈。这个项目处于早期阶段，多数问题出在**焦点切换与按键时序**上，
-        请尽量填完下面的字段，尤其是「按键顺序」。
+        感谢反馈。这个项目处于早期阶段，多数问题出在**焦点切换与按键时序**上，请尽量填完下面的字段，尤其是「按键顺序」。
+        Thanks for reporting. This project is in an early stage; most issues come from **focus switching and key timing**, so please fill in the fields below, especially the key sequence.
 
         `config.json` 只包含热键与延迟配置；**请勿粘贴密码、令牌或私人文本内容**。
+        `config.json` contains only hotkey and delay settings; **do not paste passwords, tokens or private text**.
 
   - type: dropdown
     id: target
     attributes:
-      label: 目标窗口类型
+      label: 目标窗口类型 / Target window type
       options:
-        - WSLg GUI 应用
-        - 虚拟机窗口（VirtualBox / VMware 等）
-        - 远程桌面 / VNC
-        - Windows 原生程序
-        - 其它
+        - WSLg GUI 应用 / WSLg GUI app
+        - 虚拟机窗口（VirtualBox / VMware 等） / VM window (VirtualBox, VMware, ...)
+        - 远程桌面 / VNC / Remote desktop or VNC
+        - Windows 原生程序 / Native Windows app
+        - 其它 / Other
     validations:
       required: true
 
   - type: dropdown
     id: mode
     attributes:
-      label: 使用的模式
+      label: 使用的模式 / Mode
       options:
-        - OnDemand（按需）
-        - Monitoring（监听）
-        - 不确定
+        - OnDemand（按需） / OnDemand
+        - Monitoring（监听） / Monitoring
+        - 不确定 / Not sure
     validations:
       required: true
 
   - type: dropdown
     id: caps
     attributes:
-      label: 出问题时的 CapsLock 状态
+      label: 出问题时的 CapsLock 状态 / CapsLock state when it happened
       options:
-        - 关闭
-        - 开启
-        - 不确定
+        - 关闭 / Off
+        - 开启 / On
+        - 不确定 / Not sure
     validations:
       required: true
 
   - type: input
     id: version
     attributes:
-      label: 程序版本
-      description: 鼠标停在托盘图标上可看到版本号
+      label: 程序版本 / App version
+      description: 鼠标停在托盘图标上可看到版本号 / Hover the tray icon to see the version
       placeholder: 0.2.2
     validations:
       required: true
@@ -58,7 +59,7 @@ body:
   - type: input
     id: os
     attributes:
-      label: Windows 版本
+      label: Windows 版本 / Windows version
       placeholder: Windows 11 24H2
     validations:
       required: true
@@ -66,8 +67,8 @@ body:
   - type: input
     id: runtime
     attributes:
-      label: .NET 10 Desktop Runtime 版本
-      description: dotnet --list-runtimes 中 Microsoft.WindowsDesktop.App 的版本
+      label: .NET 10 Desktop Runtime 版本 / Installed Desktop Runtime
+      description: dotnet --list-runtimes 中 Microsoft.WindowsDesktop.App 的版本 / Version of Microsoft.WindowsDesktop.App from dotnet --list-runtimes
       placeholder: 10.0.15
     validations:
       required: false
@@ -76,7 +77,7 @@ body:
     id: config
     attributes:
       label: config.json
-      description: 粘贴完整内容，不含任何敏感信息
+      description: 粘贴完整内容，不含任何敏感信息 / Paste the full file, without sensitive data
       render: json
     validations:
       required: true
@@ -84,8 +85,8 @@ body:
   - type: textarea
     id: steps
     attributes:
-      label: 按键顺序与复现步骤
-      description: 例如「点进 WSLg 文本框 → Ctrl+Shift+Space → 键入 nihao → Ctrl+Enter」
+      label: 按键顺序与复现步骤 / Key sequence and reproduction steps
+      description: 例如「点进 WSLg 文本框 → Ctrl+Shift+Space → 键入 nihao → Ctrl+Enter」 / e.g. "click the WSLg text field, Ctrl+Shift+Space, type nihao, Ctrl+Enter"
       placeholder: |
         1. ...
         2. ...
@@ -96,22 +97,22 @@ body:
   - type: textarea
     id: expected
     attributes:
-      label: 期望行为
+      label: 期望行为 / Expected behavior
     validations:
       required: true
 
   - type: textarea
     id: actual
     attributes:
-      label: 实际行为
-      description: 若托盘弹出「快捷键注册失败」气泡，请一并说明
+      label: 实际行为 / Actual behavior
+      description: 若托盘弹出「快捷键注册失败」气泡，请一并说明 / Mention any "hotkey registration failed" balloon tip
     validations:
       required: true
 
   - type: textarea
     id: extra
     attributes:
-      label: 其它补充
-      description: 目标窗口是否以管理员身份运行、使用的输入法与语言、剪贴板是否被其它程序占用等
+      label: 其它补充 / Additional context
+      description: 目标窗口是否以管理员身份运行、使用的输入法与语言、剪贴板是否被其它程序占用等 / Elevated target window, IME and language, clipboard usage by other apps
     validations:
       required: false

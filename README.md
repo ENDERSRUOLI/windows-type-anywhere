@@ -1,5 +1,7 @@
 # Windows Type Anywhere
 
+**简体中文** | [English](README.en.md)
+
 [![.NET 10](https://img.shields.io/badge/.NET-10.0--windows-512BD4)](https://dotnet.microsoft.com/download/dotnet/10.0)
 [![Platform](https://img.shields.io/badge/platform-Windows-0078D6)](#运行环境)
 [![Version](https://img.shields.io/badge/version-0.2.2-2ea44f)](CHANGELOG.md)
