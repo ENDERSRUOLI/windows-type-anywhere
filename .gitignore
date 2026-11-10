@@ -1,0 +1,43 @@
+## .NET 构建产物
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+bld/
+[Aa]rtifacts/
+
+## 用户/IDE 私有文件
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.userprefs
+*.sln.docstates
+.vs/
+.vscode/
+.idea/
+*.sln.iml
+
+## .NET 中间文件
+project.lock.json
+project.fragment.lock.json
+*.nupkg
+*.snupkg
+*.cache
+
+## 日志与临时文件
+[Ll]og/
+[Ll]ogs/
+*.log
+*.tmp
+*.bak
+
+## 操作系统
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+## 说明：config.json / app.manifest / README.md 属于项目源文件，不忽略。

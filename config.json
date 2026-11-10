@@ -1,0 +1,16 @@
+{
+  "Mode": "OnDemand",
+  "EnabledOnStart": true,
+  "SummonHotkey": "Ctrl+Shift+Space",
+  "CommitHotkey": "Ctrl+Enter",
+  "ToggleHotkey": "Ctrl+Shift+F12",
+  "PasteHotkey": "Ctrl+V",
+  "ForegroundWaitMs": 400,
+  "ClipboardDelayMs": 60,
+  "RestoreClipboard": true,
+  "RestoreClipboardDelayMs": 1500,
+  "RelayTopMost": true,
+  "RelayOpacity": 0.96,
+  "RelayWidth": 560,
+  "RelayHeight": 110
+}
